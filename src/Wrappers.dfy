@@ -8,6 +8,9 @@
 
 module Wrappers {
   
+  // +T means that this datatype is covariant in its type parameter.
+  // In other words, Option<S> is a subtype of Option<T> whenever S
+  // is a subtype of T.
   datatype Option<+T> = None | Some(value: T) {
     function method ToResult(): Result<T, string> {
       match this
@@ -38,6 +41,7 @@ module Wrappers {
     }
   }
 
+  // See note on covariance on Option<T>.
   datatype Result<+T, +R> = | Success(value: T) | Failure(error: R) {
     function method ToOption(): Option<T> 
     {

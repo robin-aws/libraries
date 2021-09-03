@@ -70,6 +70,21 @@ module Demo {
     res := Some(message + " " + name);
   }
 
+  // Covariance - we can assign an Option<Car> to an Option<Vehicle>
+  // since Car is a subtype of Vehicle.
+  method MaybeGetMeAVehicle() returns (vehicleOption: Option<Vehicle>) {
+    var car := new Car();
+    var carOption: Option<Car> := Some(car);
+    // This line fails to type check without the "+T" declaration
+    // on Option.
+    vehicleOption := carOption;
+  }
+
+  trait Vehicle {}
+  class Car extends Vehicle {
+    constructor()
+  }
+
   // ------ Demo for Result ----------------------------
   // We use Result when we want to give a reason for the failure:
 
