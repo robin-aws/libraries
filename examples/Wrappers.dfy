@@ -27,13 +27,24 @@ module Demo {
     }
   }
 
-  method TestMyMap() {
+  method TestOptions() {
     var m := new MyMap<string, string>();
     m.Put("message", "Hello");
     Greet(m);
 
     m.Put("name", "Dafny");
     Greet(m);
+
+    var car := new Car();
+    var carOption: Option<Car> := Some(car);
+    // Covariance - we can pass a Option<Car> as an Option<Vehicle>
+    // since Car is a subtype of Vehicle.
+    var wheelCount := GetWheelCountForOption(carOption);
+    print "My car has this many wheels:";
+    print wheelCount;
+    wheelCount := GetWheelCountForOption(None);
+    print "No car has this many wheels:";
+    print wheelCount;
   }
 
   method Greet(m: MyMap<string, string>) {
@@ -70,19 +81,22 @@ module Demo {
     res := Some(message + " " + name);
   }
 
-  // Covariance - we can assign an Option<Car> to an Option<Vehicle>
-  // since Car is a subtype of Vehicle.
-  method MaybeGetMeAVehicle() returns (vehicleOption: Option<Vehicle>) {
-    var car := new Car();
-    var carOption: Option<Car> := Some(car);
-    // This line fails to type check without the "+T" declaration
-    // on Option.
-    vehicleOption := carOption;
+  ghost method GetWheelCountForOption(vehicleOption: Option<Vehicle>) returns (res: int) {
+    match vehicleOption
+    case Some(vehicle) =>
+      res := vehicle.GetWheelCount();
+    case None =>
+      res := 0;
   }
 
-  trait Vehicle {}
+  trait Vehicle {
+    ghost method GetWheelCount() returns (res: int)
+  }
   class Car extends Vehicle {
-    constructor()
+    constructor() {}
+    ghost method GetWheelCount() returns (res: int) {
+      return 4;
+    }
   }
 
   // ------ Demo for Result ----------------------------
@@ -138,7 +152,7 @@ module Demo {
     res := Success(());
   }
 
-  method TestMyFilesystem() {
+  method TestResults() {
     var fs := new MyFilesystem();
     // Note: these verbose "outcome.Failure?" patterns will soon
     // not be needed any more, see https://github.com/dafny-lang/rfcs/pull/1
@@ -163,8 +177,8 @@ module Demo {
   }
 
   method Main() {
-    TestMyMap();
-    TestMyFilesystem();
+    TestOptions();
+    TestResults();
   }
 
 }
