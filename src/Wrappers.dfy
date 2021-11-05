@@ -90,4 +90,9 @@ module Wrappers {
   {
     if condition then Pass else Fail(error)
   }
+
+  function Bad(): int {
+    assert false;
+    42
+  }
 }
