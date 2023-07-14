@@ -4,6 +4,7 @@
 *******************************************************************************/
 
 // RUN: %run --target:java "%s" --input "%S/../../src/MutableMap/MutableMap.java"
+// RUN: %run --target:cs "%s" --input "%S/../../src/MutableMap/MutableMap.cs"
 
 include "../../src/MutableMap/MutableMap.dfy"
 include "../../src/Wrappers.dfy"
