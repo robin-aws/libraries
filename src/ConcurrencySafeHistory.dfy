@@ -1,37 +1,23 @@
 
 
-trait Event {
-  const source: object
-}
+// Append-only sequence
+class {:separated} ConcurrentJournal<T> {
 
-class SampleEvent extends Event {
-  constructor(source: object) 
-  {
-    this.source := source;
-  }
-}
-
-class {:separated} History {
-
-  var events: seq<Event>
+  var elements: seq<T>
 
   constructor()
-    ensures events == []
+    ensures elements == []
   {
-    events := [];
+    elements := [];
   }
 
   twostate predicate Invariant()
     reads this
   {
-    && old(events) <= events
-    // We'd also like to be able to say this kind of thing
-    // ONLY when assuming the post-condition of methods...
-    // && var others := events[|old(events)|..];
-    // && forall other <- others :: other.source != <my source>
+    && old(elements) <= elements
   }
 
-  method AddEvent(e: Event)
+  method Add(e: T)
     modifies this
     ensures Invariant()
 
@@ -41,33 +27,59 @@ class {:separated} History {
 
     // This is the weakened form that clients assume externally instead.
     // Follows from the combination of the sequential ensures plus the twostate invariant.
-    ensures exists others :: events == old(events) + [e] + others
+    ensures exists others :: elements == old(elements) + [e] + others
   {
-    events := events + [e];
-    assert events == old(events) + [e] + [];
+    elements := elements + [e];
+    assert elements == old(elements) + [e] + [];
+  }
+
+  twostate predicate AddedWith(p: T -> bool) 
+    reads this
+    requires Invariant()
+  {
+    exists e <- elements[|old(elements)|..] :: p(e)
   }
 }
 
-class ThreadID {
-  constructor() {
-  }
+// "Some subset of indexes exist such that those elements in order
+//  satsify this list of predicates"
+// (Name needs improving)
+predicate ContainsWith<T>(ts: seq<T>, s: seq<T -> bool>) {
+  if |ts| == 0 then
+    |s| == 0
+  else
+    || ContainsWith(ts[1..], s)
+    || (0 < |s| && s[0](ts[0]) && ContainsWith(ts[1..], s[1..]))
 }
 
 method HistoryClient() {
-  var history := new History();
-  var source := new ThreadID();
+  var history := new ConcurrentJournal();
+  assert |history.elements| == 0;
 
-  var event := new SampleEvent(source);
-  history.AddEvent(event);
+  history.Add(42);
 
-  assert event in history.events;
+  assert 42 in history.elements;
+  // Not necessarily true:
+  // assert history.elements == [42];
 
-  // This is what we want, but can't yet prove.
-  // Can we somehow express in the Invariant that the other events
-  // (which other concurrent executions may have added in this context)
-  // cannot have the same source?
-  // Could we support an invariant which is interpreted slightly differently
-  // between the contexts of ensuring it on a class method
-  // vs. assuming it after an external call to that method?
-  assert |set e <- history.events :: e.source == source| == 1; // Error: assertion might not hold
+  DoThing(history);
+  // True, but will likely need a lemma or two connecting
+  // AddedWith to ContainesWith in order to verify
+  assert ContainsWith(history.elements, [
+    (x1: int) => x1 == 42,
+    (x2: int) => x2 > 10
+  ]);
+}
+
+
+method DoThing(history: ConcurrentJournal<int>)
+  modifies history
+  ensures history.Invariant()
+  ensures history.AddedWith((e: int) => 10 < e)
+{
+  // ...
+
+  history.Add(20);
+  // Also needs help to verify
+  assert history.AddedWith((e: int) => 10 < e);
 }
